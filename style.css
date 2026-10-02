@@ -1,0 +1,91 @@
+body{
+    font-family:sans-serif;
+    margin:0;
+    background:#f2f2f2;
+}
+
+header{
+    background:linear-gradient(
+        90deg,
+        #ff69b4,
+        #ffb6c1
+    );
+
+    color:white;
+
+    padding:16px;
+
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+button{
+    border:none;
+    color: cornflowerblue;
+    border-radius:10px;
+    padding:12px;
+}
+
+.card{
+    background:white;
+
+    margin:12px;
+    padding:16px;
+
+    border-radius:12px;
+
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+}
+
+.route{
+    font-size:28px;
+    font-weight:bold;
+}
+
+.stop{
+    color:#666;
+}
+
+.eta{
+    margin-top:8px;
+    font-size:18px;
+}
+
+.deleteBtn{
+    background:cornflowerblue;
+    color:white;
+}
+
+.hidden{
+    display:none;
+}
+
+#addPanel{
+    background:white;
+    padding:20px;
+}
+
+select{
+    width:100%;
+    padding:12px;
+    margin-bottom:16px;
+}
+
+.buttonRow{
+    display:flex;
+    gap:10px;
+    margin-top:12px;
+}
+
+#saveBtn{
+    background:#d68db1;
+    color:white;
+    flex:1;
+}
+
+#closeBtn{
+    background:#999;
+    color:white;
+    flex:1;
+}

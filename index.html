@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1">
+
+    <title>CTB ETA</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="favicon.ico">
+
+    <meta name="theme-color" content="#ff69b4">
+</head>
+
+<body>
+
+<header>
+    <h1>CTB ETA</h1>
+    <button id="showAddBtn">+ Add Bus</button>
+</header>
+
+<div id="favorites"></div>
+
+<div id="addPanel" class="hidden">
+
+    <h2>Add Bus</h2>
+
+    <label>Route</label>
+    <select id="routeSelect"></select>
+
+    <label>Direction</label>
+    <select id="directionSelect">
+        <option value="inbound">Inbound</option>
+        <option value="outbound">Outbound</option>
+    </select>
+
+    <label>Stop</label>
+    <select id="stopSelect"></select>
+
+    <div class="buttonRow">
+        <button id="saveBtn">Save</button>
+        <button id="closeBtn">Close</button>
+    </div>
+
+</div>
+
+<script src="app.js"></script>
+
+</body>
+
+</html>
