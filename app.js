@@ -2,6 +2,8 @@ console.log(
     "CTB ETA starting..."
 );
 
+const stopCache = {};
+
 const COMPANY = "CTB";
 
 const ROUTE_API =
@@ -57,79 +59,123 @@ async function loadRoutes(){
 }
 
 function populateRoutes(){
+    filterRoutes();
+}
+
+function filterRoutes() {
+
+    const keyword =
+        document
+        .getElementById("routeSearch")
+        .value
+        .trim()
+        .toUpperCase();
 
     const select =
-        document.getElementById("routeSelect");
+        document.getElementById(
+            "routeSelect"
+        );
 
     select.innerHTML = "";
 
     let uniqueRoutes =
-        [...new Set(routes.map(r => r.route))];
+        [...new Set(
+            routes.map(r => r.route)
+        )];
 
-    uniqueRoutes.sort();
+    uniqueRoutes
+        .sort()
+        .filter(route =>
+            route.includes(keyword)
+        )
+        .forEach(route => {
 
-    uniqueRoutes.forEach(route => {
+            const option =
+                document.createElement(
+                    "option"
+                );
 
-        let option =
-            document.createElement("option");
+            option.value = route;
+            option.textContent = route;
 
-        option.value = route;
-        option.textContent = route;
+            select.appendChild(option);
+        });
 
-        select.appendChild(option);
-    });
+    if (select.options.length > 0) {
+        routeChanged();
+    }
+    else {
+        document.getElementById(
+            "directionSelect"
+        ).innerHTML = "";
 
-    routeChanged();
+        document.getElementById(
+            "stopSelect"
+        ).innerHTML = "";
+    }
 }
 
 async function routeChanged() {
-
     const route =
-        document.getElementById(
-            "routeSelect"
-        ).value;
-
-    const filtered =
-        routes.filter(
-            r => r.route === route
-        );
+        document.getElementById("routeSelect").value;
 
     const dirSelect =
-        document.getElementById(
-            "directionSelect"
-        );
+        document.getElementById("directionSelect");
 
     dirSelect.innerHTML = "";
 
-    const inboundOption =
-        document.createElement(
-            "option"
-        );
+    for (const dir of ["inbound", "outbound"]) {
 
-    inboundOption.value =
-        "inbound";
+        try {
 
-    inboundOption.textContent =
-        "Inbound";
+            const res =
+                await fetch(
+                    `${ROUTE_STOP_API}${route}/${dir}`
+                );
 
-    dirSelect.appendChild(
-        inboundOption
-    );
+            const json =
+                await res.json();
 
-    const outboundOption =
-        document.createElement(
-            "option"
-        );
+            if (!json.data?.length)
+                continue;
 
-    outboundOption.value =
-        "outbound";
+            const firstStopId =
+                json.data[0].stop;
 
-    outboundOption.textContent =
-        "Outbound";
+            const lastStopId =
+                json.data[
+                    json.data.length - 1
+                ].stop;
 
-    dirSelect.appendChild(
-        outboundOption
-    );
+            const [firstRes, lastRes] =
+                await Promise.all([
+                    fetch(`${STOP_API}${firstStopId}`),
+                    fetch(`${STOP_API}${lastStopId}`)
+                ]);
+
+            const firstStop =
+                (await firstRes.json()).data;
+
+            const lastStop =
+                (await lastRes.json()).data;
+
+            const option =
+                document.createElement(
+                    "option"
+                );
+
+            option.value = dir;
+
+            option.textContent =
+                `${dir === "inbound" ? "Inbound" : "Outbound"} - ` +
+                `${firstStop.name_en} → ${lastStop.name_en}`;
+
+            dirSelect.appendChild(option);
+
+        } catch (ex) {
+            console.error(ex);
+        }
+    }
 
     await directionChanged();
 }
@@ -190,21 +236,18 @@ async function directionChanged(){
             json.data.length
         );
 
-        for (
-            const stopRow of json.data
-        ) {
+        const stopIds = json.data.map(
+            stopRow => stopRow.stop
+        );
 
-            const stopRes =
-                await fetch(
-                    `${STOP_API}${stopRow.stop}`
-                );
+        const stopDetails =
+            await Promise.all(
+                stopIds.map(
+                    id => getStop(id)
+                )
+            );
 
-            if (!stopRes.ok) {
-                continue;
-            }
-
-            const stopJson =
-                await stopRes.json();
+        stopDetails.forEach((stop, index) => {
 
             const option =
                 document.createElement(
@@ -212,15 +255,16 @@ async function directionChanged(){
                 );
 
             option.value =
-                stopRow.stop;
+                stopIds[index];
 
             option.textContent =
-                stopJson.data.name_en;
+                stop.name_en;
 
             stopSelect.appendChild(
                 option
             );
-        }
+
+        });
 
         console.log(
             "Dropdown loaded:",
@@ -276,12 +320,38 @@ async function addFavorite(){
             stopSelect.selectedIndex
         ].text;
 
-    favorites.push({
+    const direction =
+        document.getElementById(
+            "directionSelect"
+        ).value;
 
+    const directionText =
+        document.getElementById(
+            "directionSelect"
+        ).options[
+            document.getElementById(
+                "directionSelect"
+            ).selectedIndex
+        ].text;
+
+    const exists =
+        favorites.some(f =>
+            f.route === route &&
+            f.direction === direction &&
+            f.stopId === stopId
+        );
+
+    if(exists){
+        alert("Already added.");
+        return;
+    }
+
+    favorites.push({
         route,
+        direction,
+        directionText,
         stopId,
         stopName
-
     });
 
     saveFavorites();
@@ -310,19 +380,39 @@ async function fetchETA(bus){
     const res =
         await fetch(url);
 
-    if(!res.ok){
+    const json =
+        await res.json();
 
-        throw new Error(
-            `ETA HTTP ${res.status}`
-        );
+    if (!bus.direction) {
+        return json.data.slice(0,3);
     }
+
+    return json.data
+        .filter(
+            eta => eta.dir === bus.direction
+        )
+        .slice(0,3);
+}
+
+async function getStop(stopId){
+
+    if(stopCache[stopId]){
+        return stopCache[stopId];
+    }
+
+    const res =
+        await fetch(
+            `${STOP_API}${stopId}`
+        );
 
     const json =
         await res.json();
 
-    return json.data.slice(0,3);
-}
+    stopCache[stopId] =
+        json.data;
 
+    return json.data;
+}
 
 async function renderFavorites(){
 
@@ -333,19 +423,21 @@ async function renderFavorites(){
 
     container.innerHTML = "";
 
-    for(let i=0;i<favorites.length;i++){
+    const etaResults =
+        await Promise.all(
+            favorites.map(bus =>
+                fetchETA(bus)
+                    .catch(error => {
+                        console.error(error);
+                        return [];
+                    })
+            )
+        );
 
-        const bus =
-            favorites[i];
+    favorites.forEach((bus, i) => {
 
-        let etas = [];
-
-        try {
-            etas = await fetchETA(bus);
-        }
-        catch(ex) {
-            console.error(ex);
-        }
+        const etas =
+            etaResults[i];
 
         const div =
             document.createElement("div");
@@ -354,27 +446,36 @@ async function renderFavorites(){
 
         let html =
             `<div class="route">${bus.route}</div>
-             <div class="stop">${bus.stopName}</div>`;
+            <div class="direction">
+                ${bus.directionText || "Direction N/A"}
+            </div>
+            <div class="stop">${bus.stopName}</div>`;
 
-        etas.forEach(e=>{
+        const etaText =
+            etas
+            .map(e => formatEta(e.eta))
+            .join(" | ");
 
-            html +=
-            `<div class="eta">
-             ${formatEta(e.eta)}
-             </div>`;
-        });
+        html += `
+            <div class="eta">
+                ${etaText || "--"}
+            </div>
+        `;
 
-        html +=
-        `<button
-            class="deleteBtn"
-            onclick="removeFavorite(${i})">
-            Remove
-         </button>`;
+        html += `
+            <button
+                class="deleteBtn"
+                onclick="removeFavorite(${i})">
+                Remove
+            </button>
+        `;
 
         div.innerHTML = html;
 
         container.appendChild(div);
-    }
+
+    });
+
 }
 
 function formatEta(eta){
@@ -441,6 +542,13 @@ document
         .classList
         .add("hidden");
     }
+);
+
+document
+.getElementById("routeSearch")
+.addEventListener(
+    "input",
+    filterRoutes
 );
 
 if (

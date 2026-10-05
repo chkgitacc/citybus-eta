@@ -89,3 +89,10 @@ select{
     color:white;
     flex:1;
 }
+
+#routeSearch{
+    width:100%;
+    padding:10px;
+    margin-bottom:8px;
+    font-size:16px;
+}
