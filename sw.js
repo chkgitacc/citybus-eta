@@ -1,4 +1,4 @@
-const CACHE_VERSION = "kmb-citybus-v1.0.12";
+const CACHE_VERSION = "kmb-citybus-v1.0.16";
 
 const FILES_TO_CACHE = [
     "./",

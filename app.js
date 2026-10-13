@@ -271,6 +271,8 @@ async function directionChanged(){
             stopSelect.options.length
         );
 
+        //await findNearestStop();
+
     }
     catch(ex){
 
@@ -416,8 +418,7 @@ async function getStop(stopId){
             `${STOP_API}${stopId}`
         );
 
-    const json =
-        await res.json();
+    const json = await res.json();
 
     stopCache[stopId] =
         json.data;
@@ -527,6 +528,145 @@ function removeFavorite(index){
     renderFavorites();
 }
 
+function getCurrentLocation() {
+    return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                resolve({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                });
+            },
+            reject,
+            {
+                enableHighAccuracy: true,
+                timeout: 10000
+            }
+        );
+    });
+}
+
+function getDistance(
+    lat1,
+    lon1,
+    lat2,
+    lon2
+) {
+    const R = 6371e3;
+
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a =
+        Math.sin(Δφ / 2) *
+        Math.sin(Δφ / 2) +
+        Math.cos(φ1) *
+        Math.cos(φ2) *
+        Math.sin(Δλ / 2) *
+        Math.sin(Δλ / 2);
+
+    const c =
+        2 *
+        Math.atan2(
+            Math.sqrt(a),
+            Math.sqrt(1 - a)
+        );
+
+    return R * c;
+}
+
+async function findNearestStop() {
+
+    const stopSelect =
+        document.getElementById(
+            "stopSelect"
+        );
+
+    if (
+        stopSelect.options.length === 0
+    ) {
+        alert(
+            "Please select route and direction first."
+        );
+        return;
+    }
+
+    try {
+
+        const current =
+            await getCurrentLocation();
+
+        const stopIds =
+            [...stopSelect.options]
+            .map(
+                option => option.value
+            );
+
+        const stopDetails =
+            await Promise.all(
+                stopIds.map(
+                    id => getStop(id)
+                )
+            );
+
+        let nearestIndex = -1;
+        let nearestDistance =
+            Number.MAX_VALUE;
+
+        stopDetails.forEach(
+            (stop, index) => {
+
+                const distance =
+                    getDistance(
+                        current.lat,
+                        current.lng,
+                        parseFloat(stop.lat),
+                        parseFloat(stop.long)
+                    );
+
+                if (
+                    distance <
+                    nearestDistance
+                ) {
+                    nearestDistance =
+                        distance;
+
+                    nearestIndex =
+                        index;
+                }
+            }
+        );
+
+        if (
+            nearestIndex >= 0
+        ) {
+
+            stopSelect.selectedIndex =
+                nearestIndex;
+
+            const stopName =
+                stopSelect.options[
+                    nearestIndex
+                ].text;
+
+            alert(
+                `Nearest stop selected:\n${stopName}\n(${Math.round(nearestDistance)}m away)`
+            );
+        }
+
+    } catch (error) {
+
+        console.error(error);
+
+        alert(
+            "Unable to get current location."
+        );
+    }
+}
+
 document
 .getElementById("showAddBtn")
 .addEventListener("click",()=>{
@@ -574,6 +714,13 @@ document
 .addEventListener(
     "input",
     filterRoutes
+);
+
+document
+.getElementById("nearbyBtn")
+.addEventListener(
+    "click",
+    findNearestStop
 );
 
 if (
