@@ -377,22 +377,33 @@ async function fetchETA(bus){
     const url =
         `${ETA_API}${bus.stopId}/${bus.route}`;
 
-    const res =
-        await fetch(url);
+    const res = await fetch(url);
+    const json = await res.json();
 
-    const json =
-        await res.json();
+    console.log(
+        "ETA response",
+        bus.route,
+        bus.stopId,
+        json.data
+    );
 
     if (!bus.direction) {
         return json.data.slice(0,3);
     }
 
+    const dirMap = {
+        inbound: "I",
+        outbound: "O",
+        I: "I",
+        O: "O"
+    };
+
     return json.data
         .filter(
-            eta => eta.dir === bus.direction
+            eta => eta.dir === dirMap[bus.direction]
         )
         .slice(0,3);
-}
+    }
 
 async function getStop(stopId){
 
@@ -415,6 +426,11 @@ async function getStop(stopId){
 }
 
 async function renderFavorites(){
+
+    console.log(
+        "renderFavorites called",
+        favorites
+    );
 
     const container =
         document.getElementById(
@@ -482,18 +498,27 @@ function formatEta(eta){
     if(!eta)
         return "--";
 
-    const etaDate =
-        new Date(eta);
+    // const etaDate = new Date(eta);
+
+    // const mins =
+    //     Math.max(
+    //         0,
+    //         Math.floor(
+    //             (etaDate - new Date())
+    //             /60000
+    //         )
+    //     );
+    // return mins + " min";
 
     const mins =
-        Math.max(
-            0,
-            Math.round(
-                (etaDate - new Date())
-                /60000
-            )
-        );
-    return mins + " min";
+        (new Date(eta) - new Date())
+        / 60000;
+
+    if(mins < 1){
+        return "Arriving";
+    }
+
+    return Math.floor(mins) + " min";
 }
 
 function removeFavorite(index){
@@ -600,5 +625,5 @@ renderFavorites();
 
 setInterval(
     renderFavorites,
-    30000
+    15000
 );

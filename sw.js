@@ -1,4 +1,4 @@
-const CACHE_VERSION = "kmb-citybus-v1.0.5";
+const CACHE_VERSION = "kmb-citybus-v1.0.12";
 
 const FILES_TO_CACHE = [
     "./",
@@ -74,29 +74,24 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
 
+    const url = new URL(
+        event.request.url
+    );
+
+    // Never cache API calls
     if (
-        event.request.method !== "GET"
+        url.hostname === "rt.data.gov.hk"
     ) {
+        event.respondWith(
+            fetch(event.request)
+        );
         return;
     }
 
     event.respondWith(
-
-        caches.match(
-            event.request
+        caches.match(event.request)
+        .then(response =>
+            response || fetch(event.request)
         )
-        .then(cached => {
-
-            if (cached) {
-                return cached;
-            }
-
-            return fetch(
-                event.request
-            );
-
-        })
-
     );
-
 });
